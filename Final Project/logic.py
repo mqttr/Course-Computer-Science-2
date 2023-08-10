@@ -15,13 +15,13 @@ class Logic(QMainWindow, Ui_MainWindow):
 
         # Cache
         self.__cache = {
-            self.radio_add:        [ "", "", "", False ],
-            self.radio_divide:     [ "", "", "", False ],
-            self.radio_multiply:   [ "", "", "", False ],
-            self.radio_modulo:     [ "", "", "", False ],
-            self.radio_subtract:   [ "", "", "", False ],
-            self.radio_root:       [ "", "", "", False ],
-            None: ["","","", False]
+            self.radio_add:         [ "", "", "", False ],
+            self.radio_divide:      [ "", "", "", False ],
+            self.radio_multiply:    [ "", "", "", False ],
+            self.radio_modulo:      [ "", "", "", False ],
+            self.radio_subtract:    [ "", "", "", False ],
+            self.radio_root:        [ "", "", "", False ],
+            None:                   ["","","", False]
         }
 
         # Control Mappings

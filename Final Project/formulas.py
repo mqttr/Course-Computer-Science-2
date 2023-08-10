@@ -1,28 +1,28 @@
 from math import prod
 import sys
 
-def add(values) -> float:
+def add(values: list) -> float:
     sum = 0
     for val in values:
         sum += float(val)
     return sum
 
-def subtract(values):
+def subtract(values: list):
     total = values[0]
     for val in values[1:-1]:
         total = total - val
     return total
 
-def multiply(values):
+def multiply(values: list):
     product = 1
     for val in values:
         product = float(val) * product
     return product
 
-def modulo(values):
+def modulo(values: list):
     return values[0] % values[1]
 
-def divide(values):
+def divide(values: list):
     return values[0] / values[1]
 
 def root(values):
