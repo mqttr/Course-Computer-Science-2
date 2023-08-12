@@ -2,16 +2,14 @@ from gui import *
 import formulas as f
 
 class Logic(QMainWindow, Ui_MainWindow):
-    def __init__(self):
+    def __init__(self) -> None:
+        '''
+        Initializes logic of GUI; Generates cache, hides graphic modules that should not be present at startup, and links buttons to py methods.
+        '''
         super().__init__()
         self.setupUi(self)
-        
-        self.__lastOperator = None
 
-        # Hide
-        self.hide_ev_inputs()
-        self.group_value.hide()
-        self.hide_answer()
+        self.__lastOperator = self.group_operator.checkedButton() # None
 
         # Cache
         self.__cache = {
@@ -23,20 +21,93 @@ class Logic(QMainWindow, Ui_MainWindow):
             self.radio_root:        [ "", "", "", False ],
             None:                   ["","","", False]
         }
+        self.__operator_display_settings = {
+            self.radio_add:         [ "Value 1"   , "Value 2"  ,  True ],
+            self.radio_divide:      [ "Numerator" , "Divisor"  ,  True ],
+            self.radio_multiply:    [ "Value 1"   , "Value 2"  ,  True ],
+            self.radio_modulo:      [ "Base"      , "Divisor"  ,  False ],
+            self.radio_subtract:    [ "Value 1"   , "Value 2"  ,  True ],
+            self.radio_root:        [ "Base"      , "Exponent" ,  False ],
+            None:                   [ "Value 1"   , "Value 2"  ,  True ]
+        }
+
+        # Initial Hiding
+        self.update_module_visibility()
 
         # Control Mappings
-        self.check_extra_values.clicked.connect(lambda: self.click_ev_button())
-        self.button_calculate.clicked.connect(lambda: self.calculate())
-        self.group_operator.buttonClicked.connect(lambda: self.click_operator_buttons())
+        self.check_extra_values.clicked.connect(lambda: self.click_check_extra_values())
+        self.button_calculate.clicked.connect(lambda: self.click_calculate())
+        self.group_operator.buttonClicked.connect(lambda: self.refresh_all_ui_elements())
         self.button_clear_cache.clicked.connect(lambda: self.cache_clear())
 
-    def click_operator_buttons(self):
-        self.cache_main()
-        self.set_operation_dependent_display_settings()
-        self.set_answer_text('')        
+    def click_check_extra_values(self) -> None:
+        '''
+        Master action on Click of check_extra_values checkbox; Updates cache and updates module visibility.
+        '''
+        self.update_cache(self.group_operator.checkedButton())
+        self.update_module_visibility()
 
-    def set_operation_dependent_display_settings(self):
-        def enable_check_extra_values(option):
+    def update_module_visibility(self) -> None:
+        '''
+        Updates all of the graphic modules' visibily based on various parameters: state of cache, active selected operation, last selected operation, etc
+        '''
+        def vis_extra_value(status: bool) -> None: 
+            '''
+            Set the visibility of the inversely-related frames of extra values and default 2-value data entry.
+
+            :param status: Visibility status of extra values frame; Visibility not status of two value frame 
+            '''
+            if status:
+                self.frame_two_values.hide()
+                self.frame_extra_values.show()
+            else:
+                self.frame_extra_values.hide()
+                self.frame_two_values.show()
+        def vis_answer(status: bool) -> None:
+            '''
+            Set the visibility of the frame containing all answer-related display modules.
+
+            :param status: Visibility status of frame containing answer-related display modules
+            '''
+            if status:
+                self.group_answer.show()
+            else:
+                self.group_answer.hide()
+        def vis_all_value(status: bool) -> None:
+            '''
+            Set the visibility of the frame containing all value-related display modules.
+
+            :param status: Visibility status of the frame containing all value-related display modules.
+            '''
+            if status:
+                self.group_value.show()
+            else:
+                self.group_value.hide()
+
+        if self.__lastOperator == None and self.group_operator.checkedButton() == None:
+            vis_answer(False)
+            vis_extra_value(False)
+            vis_all_value(False)
+            return
+        else: 
+            vis_all_value(True)
+            vis_answer(True)
+
+        self.line_value_1.setText(self.__cache[self.group_operator.checkedButton()][0])
+        self.line_value_2.setText(self.__cache[self.group_operator.checkedButton()][1])
+        self.text_values.setText(self.__cache[self.group_operator.checkedButton()][2])
+
+        vis_extra_value(self.__cache[self.group_operator.checkedButton()][3])
+
+    def set_operation_dependent_display_settings(self) -> None:
+        '''
+        Method grabs display settings to set the availability of extra value input when using some operations.
+        '''
+        def enable_check_extra_values(option: bool):
+            '''
+            Toggles the availability of check_extra_values
+            :param option: True/False Availability of check_extra_values
+            '''
             self.check_extra_values.setEnabled(option)
             if option:
                 self.check_extra_values.setToolTip("")
@@ -44,148 +115,20 @@ class Logic(QMainWindow, Ui_MainWindow):
                 self.check_extra_values.setToolTip("This has been disabled due to it not making sense with the selected operation.")
 
         operation = self.group_operator.checkedButton()
-        match operation:
-            case self.radio_add:
-                enable_check_extra_values(True)
-                self.label_value_1.setText('Value 1')
-                self.label_value_2.setText('Value 2')
-            case self.radio_subtract:
-                enable_check_extra_values(True)
-                self.label_value_1.setText('Value 1')
-                self.label_value_2.setText('Value 2')
-            case self.radio_multiply:                
-                enable_check_extra_values(True)
-                self.label_value_1.setText('Value 1')
-                self.label_value_2.setText('Value 2')
-            case self.radio_divide:
-                enable_check_extra_values(False)
-                self.label_value_1.setText('Numerator')
-                self.label_value_2.setText('Divisor')
-            case self.radio_modulo:
-                enable_check_extra_values(False)
-                self.label_value_1.setText('Numerator')
-                self.label_value_2.setText('Divisor')
-            case self.radio_root:
-                enable_check_extra_values(False)
-                self.label_value_1.setText('Base')
-                self.label_value_2.setText('Exponent')
-            case None:
-                enable_check_extra_values(True)
-                self.label_value_1.setText('Value 1')
-                self.label_value_2.setText('Value 2')
-                return
-            case _:
-                enable_check_extra_values(True)
-                self.label_value_1.setText('Value 1')
-                self.label_value_2.setText('Value 2')
-                return
-
-    def set_multi_focus(self, soonOperator: QRadioButton):
-        self.check_extra_values.setChecked(self.__cache[soonOperator][3])
-        self.click_ev_button()    
-
-    def cache_main(self):
-        soonOperator = self.group_operator.checkedButton()
-
-        self.__cache[self.__lastOperator] = [ self.line_value_1.text(), self.line_value_2.text(), self.text_values.toPlainText(), self.check_extra_values.isChecked() ]
-        
-        if self.__lastOperator == None:
-            self.__cache[soonOperator][3] = self.check_extra_values.isChecked()
-            self.show_answer()
-            self.group_value.show()
-        else:
-            self.line_value_1.setText(self.__cache[soonOperator][0])
-            self.line_value_2.setText(self.__cache[soonOperator][1])
-            self.text_values.setText(self.__cache[soonOperator][2])
-
-        self.__lastOperator = self.group_operator.checkedButton()
-
-
-        self.set_multi_focus(soonOperator)
-
-    def cache_clear(self):
-        self.__cache = {
-            self.radio_add:        [ "", "", "", False ],
-            self.radio_divide:     [ "", "", "", False ],
-            self.radio_multiply:   [ "", "", "", False ],
-            self.radio_modulo:     [ "", "", "", False ],
-            self.radio_subtract:   [ "", "", "", False ],
-            self.radio_root:       [ "", "", "", False ],
-            None: ["","","", False ]
-        }
-        
-        self.line_value_1.setText('')
-        self.line_value_2.setText('')
-        self.text_values.setText('')
-
-        self.set_multi_focus(self.group_operator.checkedButton())
-        self.set_answer_text('')
-
-    def calculate(self):
-        self.set_answer_text('')
-
-        values = []
-        try:
-            if self.check_extra_values.isChecked():
-                values = self.get_ev()
-            else:
-                values = self.get_general_values()
-        except ValueError:
-            self.set_answer_text("Input must only contain numbers!")
-            return
-        except TypeError:
-            self.set_answer_text("All input boxes must contain a value!")
-            return
-
-        answer = None
-        operation = self.group_operator.checkedButton()
-        match operation:
-            case self.radio_add:
-                answer = f.add(values)
-            case self.radio_subtract:
-                answer = f.subtract(values)
-            case self.radio_multiply:
-                answer = f.multiply(values)
-            case self.radio_divide:
-                answer = f.divide(values)
-            case self.radio_modulo:
-                answer = f.modulo(values)
-            case self.radio_root:
-                answer = f.root(values)
-            case None:
-                self.set_answer_text("Select an operation!")
-                return
-            case _:
-                self.set_answer_text("Unknown Error - Contact Developer")
-                return
-        self.set_answer_text(answer)
-
-        return
-
-    def get_ev(self):
-        raw = self.text_values.toPlainText()
-
-        values = []
-        if '/' in raw:
-            rawList = [ value.strip() for value in raw.split(',') if value.strip() ]
-            for val in rawList:
-                if '/' in val:
-                    numer, denom = val.split('/')
-                    val = (float(numer) / float(denom))
-                
-                values.append(float(val))
-        else:
-            values = [ float(value.strip()) for value in raw.split(',') if value.strip() ]
-        return values
-
-    def click_ev_button(self):
-        if self.check_extra_values.isChecked():
-            self.show_ev_inputs()
-        else:
-            self.hide_ev_inputs()
-
-    def get_general_values(self):
-        def get_decimal_fraction(text):
+        self.label_value_1.setText(self.__operator_display_settings[operation][0])
+        self.label_value_2.setText(self.__operator_display_settings[operation][1])
+        enable_check_extra_values(self.__operator_display_settings[operation][2])
+     
+    def click_calculate(self) -> None:
+        '''
+        Method is called when calculate button is clicked; Handles calculation and setting answer text.
+        '''
+        def get_decimal_fraction(text: str) -> float:
+            '''
+            Gets the decimal fraction of string input that can become float
+            :param text: Input string with optional numerator/denominator to be calculated
+            :return: Float value of the calculated and transformed input string
+            '''
             text = str(text).strip()
             if '/' in text:
                 textList = text.split('/')
@@ -200,35 +143,124 @@ class Logic(QMainWindow, Ui_MainWindow):
             else:
                 return float(text)
 
-        if self.line_value_1.text().strip() == "" or self.line_value_2.text().strip() == "":
-            raise TypeError
+        def get_extra_values(self) -> list[float]:
+            '''
+            Gets a list of all the float values of the input in extra values input box
+            :return: list[float] of the values in the extra values input box
+            '''
+            raw = self.text_values.toPlainText().split(',')
 
-        text_1 = self.line_value_1.text().strip()
-        text_2 = self.line_value_2.text().strip()
+            values = []
+            for value in raw:
+                values.append(get_decimal_fraction(value))
+            return values
 
+        def get_two_values(self) -> list[float]:
+            '''
+            Gets a list of all the float values of the input in two values input box
+            :return: list[float] of the values in the two values input box
+            '''
+            if self.line_value_1.text().strip() == "" or self.line_value_2.text().strip() == "":
+                raise TypeError
 
-        value_1 = get_decimal_fraction(text_1)
-        value_2 = get_decimal_fraction(text_2)
+            value_1 = get_decimal_fraction(self.line_value_1.text())
+            value_2 = get_decimal_fraction(self.line_value_2.text())
+            
+            return [ value_1, value_2 ]
+
+        # Get user input from selected option
+        list[float]: values
+        try:
+            if self.check_extra_values.isChecked():
+                values = get_extra_values(self)
+            else:
+                values = get_two_values(self)
+        except ValueError:
+            self.set_answer_text("Input must only contain numbers!")
+            return
+        except TypeError:
+            self.set_answer_text("All input boxes must contain a value!")
+            return
         
-        return [ value_1, value_2 ]
+        # Run operation
+        answer = None
+        operation = self.group_operator.checkedButton()
+        match operation:
+            case self.radio_add:
+                answer = f.add(values)
+            case self.radio_subtract:
+                answer = f.subtract(values)
+            case self.radio_multiply:
+                answer = f.multiply(values)
+            case self.radio_divide:
+                answer = f.divide(values)
+            case self.radio_modulo:
+                answer = f.modulo(values)
+            case self.radio_root:
+                answer = f.exponent(values)
+            case None:
+                self.set_answer_text("Select an operation!")
+                return
+            case _:
+                self.set_answer_text("Unknown Error - Contact Developer")
+                return
 
-    def show_ev_inputs(self): 
-        self.frame_two_values.hide()
-        self.frame_extra_values.show()
+        self.set_answer_text(str(answer))
 
-    def hide_ev_inputs(self):
-        self.frame_extra_values.hide()
-        self.frame_two_values.show()
+    def click_operation(self):
+        '''
+        Main method when an operation checkbox is clicked.
+        '''
+        self.update_cache(self.__lastOperator)
 
-    def hide_answer(self):
-        self.group_answer.hide()
+        self.refresh_all_ui_elements()
 
-    def show_answer(self):
-        self.group_answer.show()
+        self.__lastOperator = self.group_operator.checkedButton()
 
-    def set_answer_text(self, text):
+    def refresh_all_ui_elements(self) -> None:
+        '''
+        Main refresh all UI elements
+        '''
+        self.check_extra_values.setChecked(self.__cache[self.group_operator.checkedButton()][3])
+        self.set_answer_text("")
+        self.update_module_visibility()
+        self.set_operation_dependent_display_settings()
+
+    def update_cache(self, button: QRadioButton) -> None:
+        '''
+        Stores UI element data to the cache of the button
+        :param button: Operation option that assumes responsibility for UI elements
+        '''
+        self.__cache[button] = [ self.line_value_1.text(), self.line_value_2.text(), self.text_values.toPlainText(), self.check_extra_values.isChecked() ]
+
+    def cache_clear(self) -> None:
+        '''
+        Resets cache to default; Sets UI to reflect cache entries
+        '''
+        # Cache
+        self.__cache = {
+            self.radio_add:         [ "", "", "", False ],
+            self.radio_divide:      [ "", "", "", False ],
+            self.radio_multiply:    [ "", "", "", False ],
+            self.radio_modulo:      [ "", "", "", False ],
+            self.radio_subtract:    [ "", "", "", False ],
+            self.radio_root:        [ "", "", "", False ],
+            None:                   [ "","","", False]
+        }
+
+        self.line_value_1.setText(self.__cache[self.group_operator.checkedButton()][0])
+        self.line_value_2.setText(self.__cache[self.group_operator.checkedButton()][1])
+        self.text_values.setText(self.__cache[self.group_operator.checkedButton()][2])
+
+        self.refresh_all_ui_elements()
+
+    def set_answer_text(self, text: str) -> None:
+        '''
+        Sets the answer text box with proper formating.
+        :param text: Text to be displayed on the answer spot.
+        '''
         self.label_answer.setText(QCoreApplication.translate("MainWindow", u"<html><head/><body><p align=\"center\"><span style=\" font-size:12pt;\">" + str(text) + "<br/></span></p></body></html>", None))
-        return text
 
 if __name__ == "__main__":
-    print("Run main.py")
+    import main
+    main.main()
