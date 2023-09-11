@@ -29,13 +29,15 @@ def spam_reader(file):
         lines = f.read()
 
     confidenceLevels = [ float(confidenceLevelString) for confidenceLevelString in re.findall("X-DSPAM-Confidence: (\d.\d\d\d\d)", lines) ]
-    print(confidenceLevels)
+
     return confidenceLevels
 
 def email_counter(file):
     with open(file, 'r') as f:
         emailLines = f.read()
+    
     allEmails = re.findall('From: (\S+@\S+)', emailLines)
+
     
     mailCount = {} 
     for email in allEmails:
