@@ -1,7 +1,6 @@
 from gui import *
 from PyQt6.QtCore import QCoreApplication
 
-
 class Logic(QMainWindow, Ui_MainWindow):
     def __init__(self):
         super().__init__()
